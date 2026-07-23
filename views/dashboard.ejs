@@ -1,0 +1,65 @@
+<div class="dashboard-grid">
+  <!-- Status Card -->
+  <div class="card status-card">
+    <div class="card-header">
+      <h2 class="card-title">Status Koneksi</h2>
+      <span class="status-chip" id="status-chip">
+        <span class="status-dot waiting" id="status-dot"></span>
+        <span id="status-text">Menunggu...</span>
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="connection-info">
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" id="connection-status">Memuat...</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Uptime</span>
+          <span class="info-value" id="uptime">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Nomor</span>
+          <span class="info-value" id="phone-number">—</span>
+        </div>
+      </div>
+      <button class="btn btn-danger" id="btn-logout" style="display: none;">
+        🚪 Logout WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <!-- QR Code Card -->
+  <div class="card qr-card" id="qr-card">
+    <div class="card-header">
+      <h2 class="card-title">QR Code</h2>
+    </div>
+    <div class="card-body qr-body">
+      <div class="qr-container" id="qr-container">
+        <div class="qr-placeholder" id="qr-placeholder">
+          <span class="qr-placeholder-icon">📱</span>
+          <p>Menunggu QR Code...</p>
+          <div class="spinner"></div>
+        </div>
+        <img id="qr-image" class="qr-image" src="" alt="QR Code WhatsApp" style="display: none;">
+      </div>
+      <p class="qr-hint" id="qr-hint">Buka WhatsApp di ponsel → Menu → Perangkat Tertaut → Tautkan Perangkat</p>
+    </div>
+  </div>
+
+  <!-- Activity Log Card -->
+  <div class="card log-card">
+    <div class="card-header">
+      <h2 class="card-title">Log Aktivitas</h2>
+      <button class="btn btn-sm btn-ghost" id="btn-clear-log">Hapus</button>
+    </div>
+    <div class="card-body">
+      <div class="log-list" id="log-list">
+        <div class="log-empty">
+          <span>📝</span>
+          <p>Belum ada aktivitas</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

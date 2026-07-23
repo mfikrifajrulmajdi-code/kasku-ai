@@ -1,0 +1,109 @@
+<div class="settings-container">
+  <div class="card settings-card">
+    <div class="card-header">
+      <h2 class="card-title">⚙️ Konfigurasi Bot</h2>
+      <p class="card-subtitle">Atur koneksi webhook dan API key untuk bot WhatsApp Anda</p>
+    </div>
+    <div class="card-body">
+      <form id="settings-form" class="settings-form">
+        <!-- Webhook URL -->
+        <div class="form-group">
+          <label class="form-label" for="webhookUrl">
+            <span class="label-icon">🔗</span>
+            Webhook URL (Google Apps Script)
+          </label>
+          <input
+            type="url"
+            id="webhookUrl"
+            name="webhookUrl"
+            class="form-input"
+            placeholder="https://script.google.com/macros/s/xxx/exec"
+            value="<%= config.webhookUrl || '' %>"
+          >
+          <span class="form-hint">URL endpoint Google Apps Script Anda untuk menerima pesan</span>
+        </div>
+
+        <!-- Groq API Key -->
+        <div class="form-group">
+          <label class="form-label" for="groqApiKey">
+            <span class="label-icon">🔑</span>
+            Groq API Key
+          </label>
+          <div class="input-group">
+            <input
+              type="password"
+              id="groqApiKey"
+              name="groqApiKey"
+              class="form-input"
+              placeholder="gsk_xxxxxxxxxxxxxxxxxx"
+              value="<%= config.groqApiKey || '' %>"
+            >
+            <button type="button" class="btn btn-icon" id="toggle-api-key" title="Tampilkan/Sembunyikan">
+              👁️
+            </button>
+          </div>
+          <span class="form-hint">API key dari Groq (opsional, jika AI processing di lokal)</span>
+        </div>
+
+        <!-- Auto Reply Toggle -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="label-icon">💬</span>
+            Auto Reply
+          </label>
+          <div class="toggle-container">
+            <label class="toggle">
+              <input type="checkbox" id="autoReply" name="autoReply" <%= config.autoReply ? 'checked' : '' %>>
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label" id="auto-reply-label"><%= config.autoReply ? 'Aktif' : 'Nonaktif' %></span>
+          </div>
+          <span class="form-hint">Aktifkan untuk membalas pesan secara otomatis melalui webhook</span>
+        </div>
+
+        <!-- Prefix -->
+        <div class="form-group">
+          <label class="form-label" for="prefix">
+            <span class="label-icon">✏️</span>
+            Prefix / Trigger
+          </label>
+          <input
+            type="text"
+            id="prefix"
+            name="prefix"
+            class="form-input"
+            placeholder="Contoh: !bot atau /ask (kosongkan jika tidak perlu)"
+            value="<%= config.prefix || '' %>"
+          >
+          <span class="form-hint">Hanya proses pesan yang dimulai dengan prefix ini (kosongkan = semua pesan)</span>
+        </div>
+
+        <!-- Save Button -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="btn-save">
+            <span class="btn-icon">💾</span>
+            Simpan Pengaturan
+          </button>
+          <span class="save-status" id="save-status"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info Card -->
+  <div class="card info-card">
+    <div class="card-header">
+      <h2 class="card-title">ℹ️ Informasi</h2>
+    </div>
+    <div class="card-body">
+      <div class="info-row">
+        <span class="info-label">Terakhir Disimpan</span>
+        <span class="info-value" id="last-saved"><%= config.lastUpdated ? new Date(config.lastUpdated).toLocaleString('id-ID') : 'Belum pernah' %></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Webhook Status</span>
+        <span class="info-value" id="webhook-status"><%= config.webhookUrl ? '✅ Terkonfigurasi' : '⚠️ Belum diatur' %></span>
+      </div>
+    </div>
+  </div>
+</div>
