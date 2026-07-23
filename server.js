@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
   console.log(``);
   console.log(`  ╔══════════════════════════════════════════╗`);
-  console.log(`  ║   🤖 WA Control Center berjalan!         ║`);
+  console.log(`  ║   🤖 KasKu AI berjalan!                  ║`);
   console.log(`  ║   🌐 http://localhost:${PORT}               ║`);
   console.log(`  ╚══════════════════════════════════════════╝`);
   console.log(``);

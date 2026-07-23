@@ -1,7 +1,7 @@
 {
-  "name": "wa-control-center",
+  "name": "kasku-ai",
   "version": "1.0.0",
-  "description": "Pusat Kendali Bot WhatsApp - Web UI untuk mengelola koneksi WhatsApp dan webhook",
+  "description": "KasKu AI - Pusat Kendali Bot WhatsApp Keuangan",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

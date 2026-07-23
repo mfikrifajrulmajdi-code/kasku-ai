@@ -196,7 +196,7 @@ async function connectToWhatsApp() {
           // Field khusus untuk kompatibilitas Script Keuangan
           body: cleanMessage,
           from: sender,
-          session: "WA-Control-Center"
+          session: "KasKu-AI"
         };
 
         const response = await forwardToWebhook(config.webhookUrl, payload);
