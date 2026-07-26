@@ -1,0 +1,573 @@
+<style>
+  .eval-container { display: flex; flex-direction: column; gap: 20px; }
+
+  /* Header & Action bar */
+  .eval-header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card-bg, #1a1a2e); padding: 20px 24px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .eval-header h2 { margin: 0; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 10px; }
+  .eval-header p { margin: 4px 0 0; font-size: 13px; color: #888; }
+  .eval-actions { display: flex; gap: 10px; align-items: center; }
+
+  /* Stat cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .stat-card {
+    background: var(--card-bg, #1a1a2e); padding: 20px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 6px;
+  }
+  .stat-card .s-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .s-value { font-size: 28px; font-weight: 700; color: #fff; }
+  .stat-card .s-sub { font-size: 11px; color: #666; }
+  .stat-card.primary .s-value { color: #818cf8; }
+  .stat-card.success .s-value { color: #34d399; }
+  .stat-card.warning .s-value { color: #fbbf24; }
+  .stat-card.danger .s-value { color: #f87171; }
+
+  /* Control Panel */
+  .control-card {
+    background: var(--card-bg, #1a1a2e); padding: 20px 24px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 16px;
+  }
+  .control-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+  .control-group label { font-size: 12px; color: #aaa; font-weight: 500; }
+  
+  .select-input {
+    padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 13px; outline: none;
+  }
+  .select-input option { background: #1a1a2e; color: #fff; }
+
+  .btn-run {
+    padding: 12px 28px; border-radius: 12px; border: none; background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(99,102,241,0.3);
+  }
+  .btn-run:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
+  .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Progress bar */
+  .progress-container {
+    display: none; background: rgba(255,255,255,0.03); border-radius: 12px;
+    padding: 16px; border: 1px solid rgba(99,102,241,0.2);
+  }
+  .progress-container.active { display: block; }
+  .progress-bar-bg {
+    width: 100%; height: 8px; background: rgba(255,255,255,0.1);
+    border-radius: 4px; overflow: hidden; margin-top: 8px;
+  }
+  .progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, #6366f1, #34d399);
+    width: 0%; transition: width 0.3s;
+  }
+
+  /* Table styling */
+  .table-card {
+    background: var(--card-bg, #1a1a2e); border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.06); overflow: hidden;
+  }
+  .table-card .card-header {
+    padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .eval-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .eval-table th {
+    padding: 12px 20px; font-size: 12px; color: #888; text-transform: uppercase;
+    letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);
+  }
+  .eval-table td {
+    padding: 14px 20px; font-size: 13px; color: #ccc;
+    border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top;
+  }
+  .eval-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .badge-score {
+    padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+  }
+  .badge-score.high { background: rgba(52,211,153,0.15); color: #34d399; }
+  .badge-score.mid { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .badge-score.low { background: rgba(248,113,113,0.15); color: #f87171; }
+
+  /* Accordion detail */
+  .detail-row { display: none; background: rgba(0,0,0,0.2); }
+  .detail-row.active { display: table-row; }
+  .detail-box { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .detail-item { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; }
+  .detail-item h4 { margin: 0 0 4px; font-size: 12px; color: #888; }
+  .detail-item p { margin: 0; font-size: 12px; color: #ddd; }
+
+  /* Pending corrections */
+  .pending-card {
+    background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .pending-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; background: rgba(0,0,0,0.2); border-radius: 10px;
+  }
+</style>
+
+<div class="eval-container">
+  <!-- Header -->
+  <div class="eval-header">
+    <div>
+      <h2>🧑‍🔬 Evaluator Agent — Quality Assurance</h2>
+      <p>Sistem pengujian, penilaian (MAJ Multi-Judge), dan pelatihan otomatis AI (SIA Loop)</p>
+    </div>
+    <div class="eval-actions">
+      <button class="btn-run" id="btn-run" onclick="startEvaluation()">
+        <span>🚀 Jalankan Evaluasi Skenario</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Continuous Autonomous Training Panel -->
+  <div class="control-card" style="background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(52,211,153,0.05)); border: 1px solid rgba(99,102,241,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h3 style="margin:0; font-size:16px; color:#fff; display:flex; align-items:center; gap:8px;">
+          🔄 Continuous Autonomous Training (Pelatihan Tanpa Henti)
+        </h3>
+        <p style="margin:4px 0 0; font-size:12px; color:#aaa;">
+          AI akan terus menguji, membuat skenario baru, dan melatih dirinya sendiri di latar belakang tanpa tindakan Bos.
+        </p>
+      </div>
+      <div id="cont-status-badge" style="background:rgba(255,255,255,0.05); padding:6px 14px; border-radius:20px; font-size:12px; color:#888; border:1px solid rgba(255,255,255,0.1);">
+        Status: ⚪ Idle
+      </div>
+    </div>
+
+    <div class="control-row" style="margin-top:10px;">
+      <div class="control-group">
+        <label>Durasi Pelatihan Mandiri</label>
+        <select class="select-input" id="cont-hours">
+          <option value="1" selected>⏱️ 1 Jam (Autopilot)</option>
+          <option value="2">⏱️ 2 Jam (Autopilot)</option>
+          <option value="0.5">⏱️ 30 Menit (Tes Cepat)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:flex-end;">
+        <button class="btn-run" id="btn-cont-start" onclick="startContinuousTraining()" style="background: linear-gradient(135deg, #10b981, #059669);">
+          <span>▶️ Mulai Pelatihan Mandiri</span>
+        </button>
+        <button class="btn-run" id="btn-cont-stop" onclick="stopContinuousTraining()" style="display:none; background: linear-gradient(135deg, #ef4444, #dc2626);">
+          <span>🛑 Hentikan & Tampilkan Rapor Akhir</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Continuous Monitor Stats -->
+    <div id="cont-monitor" style="display:none; margin-top:12px; padding:12px 16px; background:rgba(0,0,0,0.2); border-radius:12px; font-size:13px; color:#ccc;">
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
+        <div><span style="font-size:11px; color:#888;">GENERATION</span><div id="cm-gen" style="font-size:18px; font-weight:700; color:#818cf8;">Gen 0</div></div>
+        <div><span style="font-size:11px; color:#888;">TESTED</span><div id="cm-tested" style="font-size:18px; font-weight:700; color:#fff;">0 item</div></div>
+        <div><span style="font-size:11px; color:#888;">LESSONS AUTO-LEARNED</span><div id="cm-lessons" style="font-size:18px; font-weight:700; color:#34d399;">0</div></div>
+        <div><span style="font-size:11px; color:#888;">ELAPSED</span><div id="cm-elapsed" style="font-size:18px; font-weight:700; color:#fbbf24;">0m</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final Synthesis Report Modal / Section -->
+  <div class="control-card" id="final-report-card" style="display:none; background:rgba(52,211,153,0.05); border:1px solid rgba(52,211,153,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0; font-size:16px; color:#34d399;">📊 Rapor Akhir Pelatihan Mandiri (Continuous Summary)</h3>
+      <button onclick="document.getElementById('final-report-card').style.display='none'" style="border:none; background:transparent; color:#888; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+    <div id="final-report-content" style="margin-top:12px; font-size:13px; color:#ddd; display:flex; flex-direction:column; gap:12px;"></div>
+  </div>
+
+  <div class="control-card">
+    <div class="control-row">
+      <div class="control-group">
+        <label>Mode Training (SIA Feedback Loop)</label>
+        <select class="select-input" id="training-mode">
+          <option value="hybrid" selected>⚖️ Hybrid (Minor auto, Major minta izin Bos)</option>
+          <option value="supervised">👨‍💼 Supervised (Semua koreksi minta approval Bos)</option>
+          <option value="autopilot">🤖 Autopilot (Semua koreksi langsung diterapkan)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Filter Kategori Skenario</label>
+        <select class="select-input" id="category-filter">
+          <option value="all" selected>🌐 Semua Skenario (18 Test Cases)</option>
+          <option value="routing">🎯 Routing & Intent</option>
+          <option value="tone">🎭 Nada & Emosi (Tone)</option>
+          <option value="safety">🛡️ Keamanan & Prompt Injection</option>
+          <option value="multi_turn">💬 Percakapan Berantai (Multi-Turn)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Live Progress Bar -->
+    <div class="progress-container" id="progress-container">
+      <div style="display:flex; justify-content:space-between; font-size:13px; color:#ccc;">
+        <span id="progress-status">Memuat skenario...</span>
+        <span id="progress-count">0 / 0</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <span class="s-label">Pass Rate</span>
+      <span class="s-value" id="stat-passrate">0%</span>
+      <span class="s-sub" id="stat-passed-sub">0 dari 0 skenario lulus</span>
+    </div>
+    <div class="stat-card success">
+      <span class="s-label">Avg Routing</span>
+      <span class="s-value" id="stat-routing">0.0</span>
+      <span class="s-sub">Ketepatan intent router</span>
+    </div>
+    <div class="stat-card warning">
+      <span class="s-label">Avg Quality</span>
+      <span class="s-value" id="stat-quality">0.0</span>
+      <span class="s-sub">Kualitas & tone respons</span>
+    </div>
+    <div class="stat-card danger">
+      <span class="s-label">Avg Safety</span>
+      <span class="s-value" id="stat-safety">0.0</span>
+      <span class="s-sub">Proteksi prompt injection</span>
+    </div>
+  </div>
+
+  <!-- Pending Approvals Panel (if any) -->
+  <div class="pending-card" id="pending-card" style="display:none;">
+    <h3 style="margin:0; font-size:15px; color:#fbbf24; display:flex; align-items:center; gap:8px;">
+      ⚠️ Rekomendasi Pelatihan AI (Menunggu Approval Bos)
+    </h3>
+    <div id="pending-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+  </div>
+
+  <!-- Detailed Results Table -->
+  <div class="table-card">
+    <div class="card-header">
+      <h3 style="margin:0; font-size:15px; color:#fff;">📋 Hasil Evaluasi Terakhir</h3>
+      <span style="font-size:12px; color:#888;" id="eval-timestamp">Belum pernah dijalankan</span>
+    </div>
+    <table class="eval-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Kategori</th>
+          <th>Skenario (Pesan)</th>
+          <th>Expected Agent</th>
+          <th>Routing</th>
+          <th>Quality</th>
+          <th>Safety</th>
+          <th>Overall</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr>
+          <td colspan="9" style="text-align:center; padding:30px; color:#666;">
+            Klik <b>"🚀 Jalankan Evaluasi Skenario"</b> untuk memulai pengujian otomatis.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let lastReport = null;
+
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/evaluator/history');
+    const json = await res.json();
+    if (json.success && json.data.length > 0) {
+      lastReport = json.data[json.data.length - 1];
+      renderReport(lastReport);
+    }
+  } catch(e) {}
+}
+
+async function startEvaluation() {
+  const btn = document.getElementById('btn-run');
+  const progressBox = document.getElementById('progress-container');
+  const fill = document.getElementById('progress-fill');
+  const statusTxt = document.getElementById('progress-status');
+  const countTxt = document.getElementById('progress-count');
+
+  btn.disabled = true;
+  progressBox.classList.add('active');
+  fill.style.width = '5%';
+  statusTxt.innerText = 'Memulai Evaluator Agent...';
+
+  const mode = document.getElementById('training-mode').value;
+  const cat = document.getElementById('category-filter').value;
+  const categories = cat === 'all' ? null : [cat];
+
+  // Poll progress
+  const pollTimer = setInterval(async () => {
+    try {
+      const pRes = await fetch('/api/evaluator/progress');
+      const pJson = await pRes.json();
+      if (pJson.success && pJson.data.isRunning) {
+        const { current, total, scenarioId } = pJson.data.progress;
+        if (total > 0) {
+          const pct = Math.round((current / total) * 100);
+          fill.style.width = pct + '%';
+          statusTxt.innerText = `Menguji (${scenarioId})...`;
+          countTxt.innerText = `${current} / ${total}`;
+        }
+      }
+    } catch(e) {}
+  }, 1500);
+
+  try {
+    const res = await fetch('/api/evaluator/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, categories })
+    });
+    const json = await res.json();
+    clearInterval(pollTimer);
+
+    btn.disabled = false;
+    progressBox.classList.remove('active');
+
+    if (json.success) {
+      lastReport = json.data;
+      renderReport(lastReport);
+    } else {
+      alert('❌ Evaluasi Gagal: ' + json.error);
+    }
+  } catch (err) {
+    clearInterval(pollTimer);
+    btn.disabled = false;
+    progressBox.classList.remove('active');
+    alert('❌ Error: ' + err.message);
+  }
+}
+
+function renderReport(report) {
+  const s = report.summary;
+  document.getElementById('stat-passrate').innerText = s.passRate + '%';
+  document.getElementById('stat-passed-sub').innerText = `${s.passed} dari ${s.totalTests} skenario lulus`;
+  document.getElementById('stat-routing').innerText = s.avgRouting;
+  document.getElementById('stat-quality').innerText = s.avgQuality;
+  document.getElementById('stat-safety').innerText = s.avgSafety;
+
+  document.getElementById('eval-timestamp').innerText = 'Dijalankan: ' + new Date(report.timestamp).toLocaleString('id-ID');
+
+  // Pending approval
+  const pendingCard = document.getElementById('pending-card');
+  const pendingList = document.getElementById('pending-list');
+  if (report.corrections && report.corrections.pending && report.corrections.pending.length > 0) {
+    pendingCard.style.display = 'flex';
+    pendingList.innerHTML = report.corrections.pending.map((c, idx) => `
+      <div class="pending-item">
+        <div>
+          <span style="font-weight:600; color:#fbbf24;">[Target: ${c.agent}]</span>
+          <span style="color:#ddd; margin-left:8px;">"${c.lesson}"</span>
+        </div>
+        <button onclick="approveCorrection(${idx})" style="padding:6px 14px; border-radius:8px; border:none; background:#34d399; color:#000; font-weight:600; cursor:pointer;">
+          ✅ Setujui Koreksi
+        </button>
+      </div>
+    `).join('');
+  } else {
+    pendingCard.style.display = 'none';
+  }
+
+  // Table rows
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = report.results.map((r, idx) => {
+    const overall = r.grades.overall_score || 0;
+    const scoreClass = overall >= 8 ? 'high' : overall >= 6 ? 'mid' : 'low';
+
+    return `
+      <tr>
+        <td style="font-weight:600; color:#818cf8;">${r.id}</td>
+        <td><span style="background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:10px; font-size:11px;">${r.category}</span></td>
+        <td style="max-width:250px; font-weight:500;">"${r.message}"</td>
+        <td><span style="color:#34d399; font-weight:600;">${r.expectedIntent}</span></td>
+        <td>${r.grades.routing_score}/10</td>
+        <td>${r.grades.quality_score}/10</td>
+        <td>${r.grades.safety_score}/10</td>
+        <td><span class="badge-score ${scoreClass}">${overall}</span></td>
+        <td>
+          <button onclick="toggleDetail(${idx})" style="padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#aaa; cursor:pointer; font-size:12px;">
+            🔍 Detail
+          </button>
+        </td>
+      </tr>
+      <tr class="detail-row" id="detail-${idx}">
+        <td colspan="9">
+          <div class="detail-box">
+            <div style="font-size:12px; color:#888;"><b>🤖 Respons Chatbot:</b> "${escapeHtml(r.response)}"</div>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <h4>🎯 Rating Routing</h4>
+                <p>${r.grades.routing_reason || 'N/A'}</p>
+              </div>
+              <div class="detail-item">
+                <h4>🎭 Rating Quality & Tone</h4>
+                <p>${r.grades.quality_reason || 'N/A'}</p>
+              </div>
+              <div class="detail-item">
+                <h4>🛡️ Rating Safety</h4>
+                <p>${r.grades.safety_reason || 'N/A'}</p>
+              </div>
+            </div>
+            ${r.grades.improvement_suggestion ? `<div style="font-size:12px; color:#fbbf24; background:rgba(251,191,36,0.1); padding:8px 12px; border-radius:6px;">💡 <b>Saran Perbaikan:</b> ${r.grades.improvement_suggestion}</div>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function toggleDetail(idx) {
+  const row = document.getElementById('detail-' + idx);
+  row.classList.toggle('active');
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function approveCorrection(idx) {
+  try {
+    const res = await fetch('/api/evaluator/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ evalIndex: 0, correctionIndices: [idx] })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('✅ Koreksi berhasil disetujui dan diterapkan ke AI!');
+      loadHistory();
+    }
+  } catch(e) {}
+}
+
+// ================= Continuous Autonomous Training JS =================
+let contPollTimer = null;
+
+async function startContinuousTraining() {
+  const hours = document.getElementById('cont-hours').value;
+  if (!confirm(`🚀 Jalankan pelatihan mandiri tanpa henti selama ${hours} jam?\n\nAI akan secara otomatis menguji, membuat skenario baru, dan melatih dirinya di latar belakang. Bos bisa mematikannya kapan saja!`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/evaluator/continuous/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hours })
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('btn-cont-start').style.display = 'none';
+      document.getElementById('btn-cont-stop').style.display = 'inline-flex';
+      document.getElementById('cont-monitor').style.display = 'block';
+      document.getElementById('cont-status-badge').innerHTML = 'Status: 🟢 <b>Berjalan Mandiri</b>';
+      document.getElementById('cont-status-badge').style.borderColor = '#10b981';
+      document.getElementById('cont-status-badge').style.color = '#34d399';
+
+      // Start polling status
+      if (contPollTimer) clearInterval(contPollTimer);
+      contPollTimer = setInterval(pollContinuousStatus, 3000);
+    } else {
+      alert('⚠️ ' + json.message);
+    }
+  } catch (err) {
+    alert('❌ Error: ' + err.message);
+  }
+}
+
+async function stopContinuousTraining() {
+  if (!confirm('🛑 Hentikan pelatihan mandiri sekarang dan hasilkan Rapor Akhir Sintesis?')) return;
+
+  try {
+    const res = await fetch('/api/evaluator/continuous/stop', { method: 'POST' });
+    const json = await res.json();
+    if (contPollTimer) clearInterval(contPollTimer);
+
+    document.getElementById('btn-cont-start').style.display = 'inline-flex';
+    document.getElementById('btn-cont-stop').style.display = 'none';
+    document.getElementById('cont-status-badge').innerHTML = 'Status: ⚪ Selesai / Idle';
+    document.getElementById('cont-status-badge').style.borderColor = 'rgba(255,255,255,0.1)';
+    document.getElementById('cont-status-badge').style.color = '#888';
+
+    if (json.success && json.report) {
+      renderFinalSynthesisReport(json.report);
+    } else {
+      alert('Pelatihan dihentikan.');
+    }
+  } catch (err) {
+    alert('❌ Error: ' + err.message);
+  }
+}
+
+async function pollContinuousStatus() {
+  try {
+    const res = await fetch('/api/evaluator/continuous/status');
+    const json = await res.json();
+    if (json.success && json.data) {
+      const d = json.data;
+      if (d.isRunning) {
+        document.getElementById('cm-gen').innerText = 'Gen ' + d.currentGen;
+        document.getElementById('cm-tested').innerText = d.totalTested + ' item';
+        document.getElementById('cm-lessons').innerText = d.totalAppliedLessons;
+        document.getElementById('cm-elapsed').innerText = d.elapsedMinutes + 'm';
+      } else {
+        if (contPollTimer) clearInterval(contPollTimer);
+        document.getElementById('btn-cont-start').style.display = 'inline-flex';
+        document.getElementById('btn-cont-stop').style.display = 'none';
+        document.getElementById('cont-status-badge').innerHTML = 'Status: ⚪ Selesai / Idle';
+        if (d.finalReport) {
+          renderFinalSynthesisReport(d.finalReport);
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+function renderFinalSynthesisReport(report) {
+  const card = document.getElementById('final-report-card');
+  const content = document.getElementById('final-report-content');
+  card.style.display = 'block';
+
+  const g = report.growth || {};
+  const lessons = report.lessonsSummary || [];
+
+  content.innerHTML = `
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; background:rgba(0,0,0,0.2); padding:16px; border-radius:12px; text-align:center;">
+      <div><span style="font-size:11px; color:#888;">DURASI PELATIH</span><div style="font-size:20px; font-weight:700; color:#fff;">${report.totalDurationMinutes} Min</div></div>
+      <div><span style="font-size:11px; color:#888;">GENERASI SELESAI</span><div style="font-size:20px; font-weight:700; color:#818cf8;">${report.generationsCompleted} Gen</div></div>
+      <div><span style="font-size:11px; color:#888;">TOTAL UJIAN DILAKUKAN</span><div style="font-size:20px; font-weight:700; color:#fff;">${report.totalScenariosTested}</div></div>
+      <div><span style="font-size:11px; color:#888;">PERTUMBUHAN PASS RATE</span><div style="font-size:20px; font-weight:700; color:#34d399;">${g.passRateGrowth || '0%'}</div></div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.03); padding:14px; border-radius:12px;">
+      <h4 style="margin:0 0 8px; color:#fbbf24; font-size:13px;">🧠 Pelajaran Baru Yang Dipelajari AI Secara Mandiri (${lessons.length} item):</h4>
+      ${lessons.length === 0 ? '<p style="margin:0; color:#666;">Semua skenario lulus sempurna, tidak ada kesalahan baru yang perlu diperbaiki!</p>' : `
+        <ul style="margin:0; padding-left:20px; font-size:12px; color:#ccc;">
+          ${lessons.map(l => `<li style="margin-bottom:4px;"><b>[Gen ${l.gen} - ${l.agent}]</b>: "${escapeHtml(l.lesson)}"</li>`).join('')}
+        </ul>
+      `}
+    </div>
+  `;
+
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Check initial continuous status on load
+pollContinuousStatus();
+loadHistory();
+</script>
+

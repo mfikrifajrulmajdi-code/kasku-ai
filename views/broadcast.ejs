@@ -1,0 +1,79 @@
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Kirim Pesan Massal</h2>
+  </div>
+  <div class="card-body">
+    <form id="broadcast-form">
+      <div class="form-group">
+        <label class="form-label" for="numbers">Daftar Nomor WhatsApp</label>
+        <p class="form-hint">Pisahkan dengan koma (,) atau baris baru (Enter). Gunakan awalan 08 atau 62.</p>
+        <textarea id="numbers" class="form-input" rows="4" placeholder="Contoh: 08123456789, 628987654321&#10;Atau paste daftar dari Excel..." required></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="message">Pesan Broadcast</label>
+        <p class="form-hint">Tuliskan pesan promosi atau pemberitahuan Anda. Mendukung emoji.</p>
+        <textarea id="message" class="form-input" rows="6" placeholder="Halo Kak! Ada promo spesial nih buat kamu hari ini..." required></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="btn-broadcast">
+          <span class="btn-icon">🚀</span> Kirim Broadcast
+        </button>
+      </div>
+    </form>
+    
+    <div id="broadcast-result" class="mt-4" style="display: none;">
+      <div class="status-badge" style="padding: 1rem; border-radius: 8px; width: 100%; justify-content: center; background: rgba(0,255,128,0.1); border: 1px solid rgba(0,255,128,0.3);">
+        <span class="status-label" style="color: #00ff80; font-size: 1rem;" id="broadcast-status-text">Broadcast Selesai!</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('broadcast-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const numbersRaw = document.getElementById('numbers').value;
+    const message = document.getElementById('message').value;
+    const btn = document.getElementById('btn-broadcast');
+    const resultDiv = document.getElementById('broadcast-result');
+    const resultText = document.getElementById('broadcast-status-text');
+    
+    // Parse numbers (split by comma or newline, remove whitespace)
+    const numbers = numbersRaw.split(/[\n,]+/).map(n => n.trim()).filter(n => n.length > 5);
+    
+    if (numbers.length === 0) {
+      alert('Masukkan setidaknya 1 nomor yang valid');
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Mengirim...';
+    resultDiv.style.display = 'none';
+    
+    try {
+      const res = await fetch('/api/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numbers, message })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        resultDiv.style.display = 'block';
+        resultText.innerHTML = `✅ Selesai! Berhasil: <b>${data.data.successCount}</b> | Gagal: <b>${data.data.failCount}</b>`;
+        document.getElementById('message').value = '';
+      } else {
+        alert(data.error || 'Gagal mengirim broadcast');
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="btn-icon">🚀</span> Kirim Broadcast';
+    }
+  });
+</script>

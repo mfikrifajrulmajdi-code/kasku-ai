@@ -28,7 +28,24 @@
         <span class="nav-icon">⚙️</span>
         <span class="nav-label">Pengaturan</span>
       </a>
+      <a href="/broadcast" class="nav-item <%= page === 'broadcast' ? 'active' : '' %>">
+        <span class="nav-icon">📢</span>
+        <span class="nav-label">Broadcast Massal</span>
+      </a>
+      <a href="/sandbox" class="nav-item <%= page === 'sandbox' ? 'active' : '' %>">
+        <span class="nav-icon">🧪</span>
+        <span class="nav-label">AI Sandbox</span>
+      </a>
+      <a href="/evaluator" class="nav-item <%= page === 'evaluator' ? 'active' : '' %>">
+        <span class="nav-icon">🧑‍🔬</span>
+        <span class="nav-label">Evaluator QA</span>
+      </a>
+      <a href="/admin/tenants" class="nav-item <%= page === 'tenants' ? 'active' : '' %>">
+        <span class="nav-icon">🏢</span>
+        <span class="nav-label">Multi-Tenant SaaS</span>
+      </a>
     </nav>
+
     <div class="sidebar-footer">
       <div class="status-badge" id="sidebar-status">
         <span class="status-dot disconnected"></span>

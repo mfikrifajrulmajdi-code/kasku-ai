@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -18,6 +19,8 @@ ensureDB();
 // ============ Middleware ============
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const { sessionMiddleware } = require('./middleware/adminAuth');
+app.use(sessionMiddleware());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============ View Engine (EJS) ============

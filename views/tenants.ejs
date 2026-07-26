@@ -1,0 +1,128 @@
+<div class="tenants-container" style="padding: 1.5rem;">
+  <div class="card" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 2rem; color: #fff; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #a5b4fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.25rem;">
+          🏢 Super Admin SaaS Multi-Tenant Dashboard
+        </h2>
+        <p style="color: #94a3b8; font-size: 0.95rem;">Kelola sewa bulanan, kustomisasi 10 nama agen, dan kredensial WhatsApp/Midtrans per klien bisnis.</p>
+      </div>
+      <button onclick="document.getElementById('addTenantModal').style.display='flex'" class="btn btn-primary" style="background: linear-gradient(135deg, #6366f1, #a855f7); border: none; padding: 0.75rem 1.5rem; border-radius: 14px; font-weight: 700; color: #fff; cursor: pointer;">
+        ➕ Tambah Klien (Tenant Baru)
+      </button>
+    </div>
+
+    <!-- Stats Summary Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+      <div style="background: rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08);">
+        <span style="color: #94a3b8; font-size: 0.85rem;">Total Klien Terdaftar</span>
+        <h3 style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; margin-top: 0.2rem;"><%= tenants.length %> Klien</h3>
+      </div>
+      <div style="background: rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08);">
+        <span style="color: #94a3b8; font-size: 0.85rem;">Perkiraan MRR (Omset Sewa)</span>
+        <h3 style="font-size: 1.8rem; font-weight: 800; color: #34d399; margin-top: 0.2rem;">Rp <%= (tenants.length * 599000).toLocaleString('id-ID') %> / bln</h3>
+      </div>
+      <div style="background: rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08);">
+        <span style="color: #94a3b8; font-size: 0.85rem;">Status Server Multi-Tenant</span>
+        <h3 style="font-size: 1.8rem; font-weight: 800; color: #fbbf24; margin-top: 0.2rem;">🟢 Active 24/7</h3>
+      </div>
+    </div>
+
+    <!-- Tenants Table -->
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.85rem;">
+            <th style="padding: 1rem;">ID TENANT</th>
+            <th style="padding: 1rem;">NAMA PERUSAHAAN (KLIEN)</th>
+            <th style="padding: 1rem;">INDUSTRI</th>
+            <th style="padding: 1rem;">PAKET SEWA</th>
+            <th style="padding: 1rem;">SALES AGENT (CUSTOM)</th>
+            <th style="padding: 1rem;">OPS AGENT (CUSTOM)</th>
+            <th style="padding: 1rem;">STATUS SEWA</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (tenants.length === 0) { %>
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">Belum ada tenant terdaftar. Klik "Tambah Klien" untuk membuat tenant baru.</td>
+            </tr>
+          <% } else { %>
+            <% tenants.forEach(t => { %>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                <td style="padding: 1rem; font-weight: 700; color: #a5b4fc;"><%= t.tenantId %></td>
+                <td style="padding: 1rem; font-weight: 600;"><%= t.companyName %></td>
+                <td style="padding: 1rem; color: #cbd5e1;"><%= t.industry %></td>
+                <td style="padding: 1rem;"><span style="background: rgba(99,102,241,0.2); color: #818cf8; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;"><%= t.subscription.plan %></span></td>
+                <td style="padding: 1rem; color: #34d399; font-weight: 600;">🤝 <%= t.agents.SALES.name %></td>
+                <td style="padding: 1rem; color: #f472b6; font-weight: 600;">👩‍💼 <%= t.agents.OPS.name %></td>
+                <td style="padding: 1rem;"><span style="background: rgba(52,211,153,0.2); color: #34d399; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;">🟢 ACTIVE</span></td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Create Tenant -->
+<div id="addTenantModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 9999;">
+  <div style="background: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; padding: 2rem; width: 90%; max-width: 500px; color: #fff;">
+    <h3 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #a5b4fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">➕ Tambah Klien SaaS Baru</h3>
+    <form id="createTenantForm">
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem;">ID Tenant (Tanpa spasi, misal: glowclinic)</label>
+        <input type="text" id="tenantIdInput" required placeholder="glowclinic" style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem;">Nama Perusahaan / Merek Klien</label>
+        <input type="text" id="companyNameInput" required placeholder="Glow Clinic Skincare" style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem;">Kategori Industri</label>
+        <input type="text" id="industryInput" required placeholder="Beauty & Clinic" style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff;">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem;">Nama Kustom Sales Agent (Gantikan Bima)</label>
+        <input type="text" id="salesNameInput" placeholder="dr. Sarah" style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff;">
+      </div>
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem;">Nama Kustom Ops/Kasir Agent (Gantikan Citra)</label>
+        <input type="text" id="opsNameInput" placeholder="Mbak Maya" style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff;">
+      </div>
+      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <button type="button" onclick="document.getElementById('addTenantModal').style.display='none'" style="background: rgba(255,255,255,0.1); border: none; padding: 0.6rem 1.2rem; border-radius: 12px; color: #fff; cursor: pointer;">Batal</button>
+        <button type="submit" style="background: linear-gradient(135deg, #6366f1, #a855f7); border: none; padding: 0.6rem 1.2rem; border-radius: 12px; color: #fff; font-weight: 700; cursor: pointer;">Simpan Tenant</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('createTenantForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const tenantId = document.getElementById('tenantIdInput').value.trim();
+  const companyName = document.getElementById('companyNameInput').value.trim();
+  const industry = document.getElementById('industryInput').value.trim();
+  const salesName = document.getElementById('salesNameInput').value.trim();
+  const opsName = document.getElementById('opsNameInput').value.trim();
+
+  try {
+    const res = await fetch('/api/tenants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId, companyName, industry, salesName, opsName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('✅ Tenant Klien Baru Berhasil Dibuat!');
+      window.location.reload();
+    } else {
+      alert('❌ Gagal: ' + data.error);
+    }
+  } catch (err) {
+    alert('❌ Error: ' + err.message);
+  }
+});
+</script>

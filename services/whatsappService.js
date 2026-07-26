@@ -1,9 +1,17 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys');
-const QRCode = require('qrcode');
-const axios = require('axios');
-const path = require('path');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers, downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
 const fs = require('fs');
-const { getConfig } = require('../config/db');
+const path = require('path');
+const axios = require('axios');
+const { getConfig, setConfig } = require('../config/db');
+const { processMessage } = require('./aiEngine');
+
+const queueService = require('./queueService');
+const abandonedCartService = require('./abandonedCartService');
+
+const cron = require('node-cron');
+
+
 
 // ============================================
 // WhatsApp Service — Baileys Engine
@@ -16,6 +24,56 @@ let sock = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT = 5;
 const SESSION_DIR = path.join(__dirname, '..', 'sessions');
+
+// In-Memory Store untuk Riwayat Obrolan (Maksimal 10 per user)
+const memoryStore = {};
+
+// ============================================
+// Improvement #7 & #8: Per-Chat Queue & Rate Limiting
+// ============================================
+// Note: chatQueues = prevents duplicate processing of same sender's messages.
+// This is different from services/queueService.js which rate-limits outbound WhatsApp replies to avoid Meta ban.
+const chatQueues = {}; // { sender: Promise }
+const rateLimits = {}; // { sender: { count, lastReset } }
+const MAX_MESSAGES_PER_MINUTE = 10;
+
+// Cleanup expired rate limits & stale memory every 30 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const sender in rateLimits) {
+        if (now - rateLimits[sender].lastReset > 300000) { // 5 min stale
+            delete rateLimits[sender];
+        }
+    }
+    // Cap memoryStore: remove entries older than 2 hours of inactivity
+    const MAX_MEMORY_ENTRIES = 500;
+    const keys = Object.keys(memoryStore);
+    if (keys.length > MAX_MEMORY_ENTRIES) {
+        const toRemove = keys.slice(0, keys.length - MAX_MEMORY_ENTRIES);
+        toRemove.forEach(k => delete memoryStore[k]);
+        console.log(`[MEMORY-CLEANUP] 🧹 Dibersihkan ${toRemove.length} entry memori lama.`);
+    }
+}, 30 * 60 * 1000);
+
+function isRateLimited(sender) {
+  const now = Date.now();
+  if (!rateLimits[sender] || now - rateLimits[sender].lastReset > 60000) {
+    rateLimits[sender] = { count: 0, lastReset: now };
+  }
+  rateLimits[sender].count++;
+  return rateLimits[sender].count > MAX_MESSAGES_PER_MINUTE;
+}
+
+function enqueueMessage(sender, fn) {
+  if (!chatQueues[sender]) {
+    chatQueues[sender] = Promise.resolve();
+  }
+  const next = chatQueues[sender].then(fn).catch(err => {
+    console.error(`[QUEUE ERROR] ${sender}:`, err);
+  });
+  chatQueues[sender] = next;
+  return next;
+}
 
 // Mulai WhatsApp service dengan Baileys
 async function start(io) {
@@ -90,6 +148,12 @@ async function connectToWhatsApp() {
       const phoneNumber = sock.user?.id?.split(':')[0] || sock.user?.id || 'Unknown';
 
       updateStatus('connected', phoneNumber);
+      
+      // Mulai Cron Job Recovery Keranjang Ditinggalkan (Agen Gita Marketing)
+      abandonedCartService.startAbandonedCartCron(async (targetJid, content) => {
+          if (sock) await sock.sendMessage(targetJid, content);
+      });
+
       if (ioInstance) {
         ioInstance.emit('qr', { qr: null }); // Hapus QR
       }
@@ -151,7 +215,43 @@ async function connectToWhatsApp() {
         if (msg.key.fromMe) continue;
 
         // Ambil teks pesan
-        const messageText = extractMessageText(msg);
+        let messageText = extractMessageText(msg) || "";
+        let imageData = null;
+
+        if (msg.message?.imageMessage) {
+            console.log("📸 Gambar terdeteksi, mengunduh...");
+            emitLog("Mendownload gambar...", "info");
+            try {
+                const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: console });
+                imageData = {
+                    mimetype: msg.message.imageMessage.mimetype,
+                    data: buffer.toString('base64')
+                };
+                if (!messageText) messageText = "[Mengirimkan Gambar]";
+            } catch (err) {
+                console.error("Gagal mendownload gambar:", err);
+            }
+        }
+        
+        // --- 🎙️ INTERCEPT VOICE NOTE (PESAN SUARA) ---
+        if (msg.message?.audioMessage) {
+            console.log("🎙️ Pesan suara (Voice Note) terdeteksi, mengunduh...");
+            emitLog("Mendownload Voice Note untuk diubah ke Teks...", "info");
+            try {
+                const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: console });
+                const sttResult = await transcribeAudio(buffer);
+                console.log(`[STT RESULT]: ${sttResult}`);
+                messageText = sttResult; // Timpa messageText dengan hasil transkripsi
+                
+                // Beri tahu user bahwa bot sedang mendengarkan
+                await sock.sendMessage(msg.key.remoteJid, { text: `*(Mendengarkan Voice Note)*: "${sttResult}"\n_Tunggu sebentar, Hadi sedang mencatat..._` });
+            } catch (err) {
+                console.error("Gagal memproses Voice Note:", err);
+                await sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Maaf Bos, saya gagal mencerna pesan suaranya. Coba ketik aja ya." });
+                continue; // Skip processing if audio fails
+            }
+        }
+
         if (!messageText) continue;
 
         const sender = msg.key.remoteJid;
@@ -186,27 +286,111 @@ async function connectToWhatsApp() {
           ? messageText.replace(config.prefix, '').trim()
           : messageText;
 
-        // Payload yang mendukung format standar WA Control Center dan Script Keuangan
-        const payload = {
-          sender,
-          pushName,
-          message: cleanMessage,
-          timestamp: msg.messageTimestamp,
-          groqApiKey: config.groqApiKey || undefined,
-          // Field khusus untuk kompatibilitas Script Keuangan
-          body: cleanMessage,
-          from: sender,
-          session: "KasKu-AI"
-        };
-
-        const response = await forwardToWebhook(config.webhookUrl, payload);
-
-        // Kirim balasan ke pengirim WhatsApp
-        if (response) {
-          await sock.sendMessage(sender, { text: response });
-          console.log(`📤 Balasan terkirim ke ${pushName}`);
-          emitLog(`Balasan terkirim ke ${pushName}`, 'success');
+        // Simpan ke memori (User)
+        if (!memoryStore[sender]) memoryStore[sender] = [];
+        memoryStore[sender].push({ role: 'user', content: cleanMessage });
+        
+        // Batasi memori maksimal 10 pesan (agar tidak terlalu berat)
+        if (memoryStore[sender].length > 10) {
+            memoryStore[sender] = memoryStore[sender].slice(-10);
         }
+
+        // Cek Rate Limit (Anti-Spam)
+        if (isRateLimited(sender)) {
+          console.log(`⚠️ Rate limit exceeded for ${sender}`);
+          emitLog(`Rate limit terlampaui untuk ${pushName}`, 'warn');
+          await sock.sendMessage(sender, { text: '⚠️ Mohon maaf, Anda terlalu cepat mengirim pesan. Mohon tunggu beberapa detik lagi ya...' });
+          continue;
+        }
+
+        // Processing via Per-Chat Queue (Anti-Duplikasi Balasan)
+        await enqueueMessage(sender, async () => {
+          // Panggil AI Engine Lokal (Dual-LLM Fallback)
+          emitLog('🤖 Memproses AI secara lokal...', 'info');
+          const response = await processMessage("KasKu-AI", sender, cleanMessage, memoryStore[sender], imageData);
+
+          // Kirim balasan ke pengirim WhatsApp
+          if (response) {
+            let responseText = response;
+            let isInvoice = false;
+            let invoicePath = null;
+            let isCrossChat = false;
+            let crossChatTarget = null;
+            let crossChatMsg = null;
+            
+            try {
+                const parsed = JSON.parse(response);
+                if (parsed.type === "INVOICE_GENERATED") {
+                    responseText = parsed.reply;
+                    isInvoice = true;
+                    invoicePath = parsed.filePath;
+                } else if (parsed.type === "CROSS_CHAT") {
+                    responseText = parsed.replyToSender;
+                    isCrossChat = true;
+                    
+                    // Deteksi nomor HP atau Vendor A
+                    let targetNo = parsed.target;
+                    if (targetNo === "VENDOR_A") {
+                        targetNo = "628985335666"; // Nomor testing dari Bos
+                    } else {
+                        // Bersihkan angka (hilangkan 0 di depan, ganti 62)
+                        if (targetNo.startsWith('0')) targetNo = '62' + targetNo.substring(1);
+                        targetNo = targetNo.replace(/[^0-9]/g, '');
+                    }
+                    
+                    crossChatTarget = targetNo + "@s.whatsapp.net";
+                    crossChatMsg = parsed.pesan;
+                }
+            } catch(e) {}
+            
+            // Simpan balasan bot ke memori
+            memoryStore[sender].push({ role: 'assistant', content: responseText });
+            if (memoryStore[sender].length > 10) {
+                memoryStore[sender] = memoryStore[sender].slice(-10);
+            }
+
+            if (isInvoice && invoicePath) {
+                await sock.sendMessage(sender, { 
+                    document: require('fs').readFileSync(invoicePath), 
+                    mimetype: 'application/pdf', 
+                    fileName: `Invoice_KasKu_${Date.now()}.pdf`,
+                    caption: responseText
+                });
+            } else if (responseText.includes("[KIRIM_BROSUR]")) {
+                responseText = responseText.replace("[KIRIM_BROSUR]", "").trim();
+                responseText += "\n\n🌐 *Katalog Lengkap & Beli Instan:* http://localhost:3000/katalog";
+                
+                const brosurPath = path.join(__dirname, '..', 'public', 'images', 'brosur.jpg');
+                if (require('fs').existsSync(brosurPath)) {
+                    await sock.sendMessage(sender, {
+                        image: require('fs').readFileSync(brosurPath),
+                        caption: responseText
+                    });
+                } else {
+                    await sock.sendMessage(sender, { text: responseText });
+                }
+            } else {
+                await sock.sendMessage(sender, { text: responseText });
+            }
+            
+            // Eksekusi Cross-Chat jika ada
+            if (isCrossChat && crossChatTarget && crossChatMsg) {
+                emitLog(`🔄 CROSS-CHAT: Mengirim pesan dari Joko ke Target (${crossChatTarget})`, 'info');
+                try {
+                    await sock.sendMessage(crossChatTarget, { 
+                        text: `${crossChatMsg}`
+                    });
+                    emitLog(`✅ CROSS-CHAT Berhasil ke ${crossChatTarget}`, 'success');
+                } catch (err) {
+                    emitLog(`❌ Gagal CROSS-CHAT: ${err.message}`, 'error');
+                }
+            }
+            
+            console.log(`📤 Balasan terkirim ke ${pushName}`);
+            emitLog(`Balasan terkirim ke ${pushName}`, 'success');
+          }
+        });
+
 
       } catch (err) {
         console.error('❌ Error memproses pesan:', err.message);
@@ -214,6 +398,29 @@ async function connectToWhatsApp() {
       }
     }
   });
+
+  // ============================================
+  // CRON JOBS: ASISTEN PROAKTIF
+  // ============================================
+  cron.schedule('0 17 * * *', async () => {
+      console.log('⏰ Menjalankan Cron: Laporan Harian Sore');
+      emitLog('Menjalankan Asisten Proaktif Sore', 'info');
+      
+      try {
+          const aiConf = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'ai-config.json')));
+          // Default Owner JID (fallback ke nomor yg terdaftar di memori log/di-hardcode untuk demo)
+          const targetJid = "153463694602350@lid"; 
+          
+          if (sock && currentStatus === 'connected') {
+              const proactiveMessage = "🌅 *Halo Bos!* Toko sudah mau tutup nih. Apakah ada transaksi pengeluaran tunai hari ini yang belum dicatat? Kalau ada, langsung ketik aja ya! - *Hadi (Finance)*";
+              await sock.sendMessage(targetJid, { text: proactiveMessage });
+              emitLog('Pesan proaktif sore berhasil dikirim', 'success');
+          }
+      } catch (err) {
+          console.error("Gagal menjalankan cron", err);
+      }
+  });
+
 }
 
 // ---- Helper: Ekstrak teks dari berbagai jenis pesan ----
@@ -348,4 +555,45 @@ async function logout() {
   }
 }
 
-module.exports = { start, getStatus, getCurrentQR, logout };
+// ---- Helper: Broadcast Message ----
+async function broadcastMessage(numbers, message) {
+  if (!sock || currentStatus !== 'connected') {
+    throw new Error('WhatsApp belum terhubung');
+  }
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (let num of numbers) {
+    try {
+      // Format number to JID (e.g., 628xxx@s.whatsapp.net)
+      let formattedNum = num.replace(/\D/g, '');
+      if (formattedNum.startsWith('0')) {
+        formattedNum = '62' + formattedNum.substring(1);
+      }
+      if (!formattedNum.endsWith('@s.whatsapp.net')) {
+        formattedNum += '@s.whatsapp.net';
+      }
+      
+      // Add slight delay to prevent being banned for spamming
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      await sock.sendMessage(formattedNum, { text: message });
+      successCount++;
+      emitLog(`[Broadcast] Terkirim ke ${num}`, 'success');
+    } catch (e) {
+      failCount++;
+      emitLog(`[Broadcast] Gagal ke ${num}: ${e.message}`, 'error');
+    }
+  }
+  
+  emitLog(`Broadcast selesai. Berhasil: ${successCount}, Gagal: ${failCount}`, 'info');
+  return { successCount, failCount };
+}
+
+function getSock() {
+  return sock;
+}
+
+module.exports = { start, getStatus, getCurrentQR, logout, broadcastMessage, getSock };
+

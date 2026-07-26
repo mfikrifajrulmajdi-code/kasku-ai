@@ -2,3 +2,14 @@ node_modules/
 sessions/
 config/database.json
 .env
+config/ai-config.json
+config/midtrans-config.json
+config/orders.json
+config/carts.json
+config/stocks.json
+config/lessons.json
+config/notified_carts.json
+tenants/
+frontend/node_modules/
+frontend/.next/
+frontend/.env*
