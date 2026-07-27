@@ -360,6 +360,27 @@ router.get('/midtrans/config', (req, res) => {
   }
 });
 
+// ============ Health Monitor Alert API ============
+router.post('/send-alert', async (req, res) => {
+  try {
+    const { phone, message } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ success: false, error: 'Phone & message required' });
+    }
+    const whatsappService = require('../services/whatsappService');
+    const sock = whatsappService.getSock ? whatsappService.getSock() : null;
+    if (sock) {
+      const jid = phone.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+      await sock.sendMessage(jid, { text: message });
+      res.json({ success: true, message: 'Alert sent' });
+    } else {
+      res.status(503).json({ success: false, error: 'WhatsApp not connected' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
 
 
