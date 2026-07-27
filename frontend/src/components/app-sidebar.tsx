@@ -11,6 +11,9 @@ import {
   LogOut,
   Bot,
   Menu,
+  Smartphone,
+  Users,
+  Radio,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -18,6 +21,9 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Tenants', href: '/admin/tenants', icon: Building2 },
+  { name: 'Devices', href: '/devices', icon: Smartphone },
+  { name: 'Kontak', href: '/contacts', icon: Users },
+  { name: 'Broadcast', href: '/broadcast', icon: Radio },
   { name: 'Katalog', href: '/katalog', icon: ShoppingBag },
   { name: 'Sandbox', href: '/sandbox', icon: Beaker },
   { name: 'Settings', href: '/settings', icon: Settings },

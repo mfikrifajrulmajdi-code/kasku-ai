@@ -32,9 +32,11 @@ app.set('layout', 'layout');
 // ============ Routes ============
 const webRoutes = require('./routes/webRoutes');
 const apiRoutes = require('./routes/apiRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 
 app.use('/', webRoutes);
 app.use('/api', apiRoutes);
+app.use('/api', contactRoutes);
 
 // ============ Socket.IO ============
 io.on('connection', (socket) => {
