@@ -33,10 +33,12 @@ app.set('layout', 'layout');
 const webRoutes = require('./routes/webRoutes');
 const apiRoutes = require('./routes/apiRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const extensionRoutes = require('./routes/extensionRoutes');
 
 app.use('/', webRoutes);
 app.use('/api', apiRoutes);
 app.use('/api', contactRoutes);
+app.use('/api', extensionRoutes);
 
 // ============ Socket.IO ============
 io.on('connection', (socket) => {

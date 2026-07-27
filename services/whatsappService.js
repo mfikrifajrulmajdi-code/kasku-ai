@@ -8,6 +8,9 @@ const { processMessage } = require('./aiEngine');
 
 const queueService = require('./queueService');
 const abandonedCartService = require('./abandonedCartService');
+const inboxStore = require('./inboxStore');
+const deliveryLogStore = require('./deliveryLogStore');
+const groupAutomationService = require('./groupAutomationService');
 
 const cron = require('node-cron');
 
@@ -204,6 +207,20 @@ async function connectToWhatsApp() {
   // ---- Event: Credentials Update ----
   sock.ev.on('creds.update', saveCreds);
 
+  // ---- Event: ACK Status Update (Centang 1, Centang 2 Abu, Centang Biru) ----
+  sock.ev.on('messages.update', (updates) => {
+    for (const update of updates) {
+      if (update.key && update.key.id && update.update && update.update.status !== undefined) {
+        deliveryLogStore.updateACKStatus(update.key.id, update.update.status);
+      }
+    }
+  });
+
+  // ---- Event: WhatsApp Group Member Joined (Group Greeter) ----
+  sock.ev.on('group-participants.update', (update) => {
+    groupAutomationService.handleGroupParticipantsUpdate(sock, update);
+  });
+
   // ---- Event: Pesan Masuk ----
   sock.ev.on('messages.upsert', async ({ type, messages }) => {
     // Hanya proses pesan real-time (bukan history sync)
@@ -259,6 +276,16 @@ async function connectToWhatsApp() {
 
         console.log(`💬 Pesan dari ${pushName} (${sender}): ${messageText}`);
         emitLog(`Pesan dari ${pushName}: ${messageText.substring(0, 50)}${messageText.length > 50 ? '...' : ''}`, 'info');
+
+        // Catat ke Inbox Live Chat
+        inboxStore.recordInboxMessage('default', sender, pushName, messageText, 'incoming');
+
+        // Cek apakah Human CS Takeover aktif untuk nomor ini
+        if (inboxStore.isTakeoverActive('default', sender)) {
+          console.log(`[TAKEOVER-ACTIVE] 👤 Human CS Takeover aktif untuk ${pushName} (${sender}). AI auto-reply dilewati.`);
+          emitLog(`Human CS Takeover aktif untuk ${pushName}, AI dilewati.`, 'info');
+          continue;
+        }
 
         // Baca konfigurasi
         const config = getConfig();

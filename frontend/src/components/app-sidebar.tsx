@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  MessageSquare,
   Building2,
   Settings,
   ShoppingBag,
@@ -14,16 +15,25 @@ import {
   Smartphone,
   Users,
   Radio,
+  Layers,
+  Clock,
+  Key,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Inbox', href: '/inbox', icon: MessageSquare },
   { name: 'Tenants', href: '/admin/tenants', icon: Building2 },
   { name: 'Devices', href: '/devices', icon: Smartphone },
   { name: 'Kontak', href: '/contacts', icon: Users },
   { name: 'Broadcast', href: '/broadcast', icon: Radio },
+  { name: 'Groups', href: '/groups', icon: Layers },
+  { name: 'Sequences', href: '/sequences', icon: Clock },
+  { name: 'Developer', href: '/developer', icon: Key },
+  { name: 'Billing', href: '/billing', icon: CreditCard },
   { name: 'Katalog', href: '/katalog', icon: ShoppingBag },
   { name: 'Sandbox', href: '/sandbox', icon: Beaker },
   { name: 'Settings', href: '/settings', icon: Settings },
